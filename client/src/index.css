@@ -27,7 +27,8 @@
   --popover-foreground: 222 47% 11%;
   --popover-border: 220 13% 90%;
   --primary: 222 47% 25%;
-  --primary-foreground: 45 100% 96%;
+  --primary-foreground: 45 93% 70%;
+  --gold: 45 93% 47%;
   --secondary: 220 14% 88%;
   --secondary-foreground: 222 47% 11%;
   --muted: 220 12% 92%;
@@ -43,8 +44,8 @@
   --chart-3: 173 58% 39%;
   --chart-4: 43 74% 49%;
   --chart-5: 27 87% 45%;
-  --font-sans: Open Sans, sans-serif;
-  --font-serif: Georgia, serif;
+  --font-sans: 'Inter', 'Poppins', sans-serif;
+  --font-serif: 'Playfair Display', 'Cormorant Garamond', serif;
   --font-mono: Menlo, monospace;
   --radius: .5rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(220 13% 91% / 0.05);
@@ -111,7 +112,8 @@
   --popover-foreground: 210 20% 98%;
   --popover-border: 217 19% 18%;
   --primary: 222 47% 30%;
-  --primary-foreground: 45 100% 96%;
+  --primary-foreground: 45 93% 70%;
+  --gold: 45 93% 70%;
   --secondary: 222 20% 18%;
   --secondary-foreground: 210 20% 98%;
   --muted: 220 15% 16%;
