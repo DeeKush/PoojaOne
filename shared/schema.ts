@@ -80,8 +80,14 @@ export const insertPoojaSchema = createInsertSchema(poojas).omit({ id: true });
 export const insertPriestSchema = createInsertSchema(priests).omit({ id: true });
 export const insertPriestZoneSchema = createInsertSchema(priestZones).omit({ id: true });
 export const insertAvailabilitySlotSchema = createInsertSchema(availabilitySlots).omit({ id: true });
-// Make bookingEndTime optional - backend will compute it
-export const insertBookingSchema = createInsertSchema(bookings).omit({ id: true, createdAt: true, updatedAt: true, bookingEndTime: true });
+// Make bookingEndTime, status, and assignedPriestId optional - backend will compute them
+export const insertBookingSchema = createInsertSchema(bookings)
+  .omit({ id: true, createdAt: true, updatedAt: true, bookingEndTime: true, status: true, assignedPriestId: true })
+  .extend({
+    // Allow optional fields that frontend doesn't send
+    status: z.string().optional(),
+    assignedPriestId: z.string().optional(),
+  });
 export const insertAdminSchema = createInsertSchema(admins).omit({ id: true });
 
 // Types
