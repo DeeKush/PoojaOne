@@ -1,0 +1,355 @@
+You are an expert full stack engineer. Build a production-ready **monorepo** for a startup called **PoojaOne**.
+
+Goal:
+Create a complete **frontend + backend** app for booking pandits (priests) for poojas in Bangalore, using **React** on the frontend, **Node.js (TypeScript) + Express** on the backend, and **Turso DB** (SQLite over libSQL) as the database.
+
+==================================================
+PRODUCT OVERVIEW
+==================================================
+
+Brand:
+- Name: PoojaOne
+- Concept: Online platform to book verified pandits for home/office poojas in Bangalore.
+- Target users: Busy working professionals in Bengaluru.
+- Launch zones: Whitefield, Koramangala, HSR Layout, Indiranagar.
+- Supported poojas at launch (5):
+  1. Griha Pravesh
+  2. Satyanarayan Pooja
+  3. Lakshmi Pooja
+  4. Ganesh Pooja
+  5. Rudrabhishek
+
+Booking model:
+- Service: Book a pandit to come home or office.
+- Options per booking:
+  - “Only priest service”
+  - “Priest brings materials” (priest brings full pooja kit as per internal checklist)
+- Hybrid booking flow:
+  - If simple conditions are met, booking can be auto-confirmed.
+  - Else status is "pending_confirmation" and ops will manually confirm later.
+
+Languages:
+- Kannada, Hindi, Telugu.
+- User can optionally choose preferred language; if not available for chosen slot, booking still goes through as pending_confirmation.
+
+Pricing:
+- Use **price range placeholders** in the frontend, NOT actual payment integration for now.
+- Just store base_price and kit_price_min/max in DB.
+
+Tone & UI:
+- Balanced modern + devotional.
+- Primary color: **Navy blue**.
+- Accent: **Gold**.
+- Background: white / light.
+- Clean, premium, no cheap religious-flyer look.
+
+==================================================
+TECH STACK & PROJECT STRUCTURE
+==================================================
+
+Overall:
+- Monorepo style or root-level folder with:
+  - `/frontend` for React
+  - `/backend` for Node/Express
+- Use TypeScript in both frontend and backend.
+
+Frontend:
+- React + Vite (preferred) + TypeScript.
+- React Router for routing.
+- Styling:
+  - Use Tailwind CSS or simple CSS modules (your choice) but keep it clean and modern.
+- Axios or Fetch for API calls.
+
+Backend:
+- Node.js + TypeScript + Express.
+- REST API under `/api/*`.
+- Use Turso DB as main database:
+  - Use the official Turso/libSQL client for Node.
+  - OR use Prisma ORM with libSQL driver (preferred for clean schema & migrations).
+
+Database:
+- Turso DB (SQLite on libSQL).
+- Assume environment variables for connection:
+  - `TURSO_DATABASE_URL`
+  - `TURSO_AUTH_TOKEN`
+- Provide a clear place to configure this and a README section explaining it.
+
+==================================================
+DATA MODEL / SCHEMA (TURSO)
+==================================================
+
+Create tables (this is the minimum schema):
+
+1. `zones`
+   - id (string or integer primary key)
+   - name (string: "Whitefield", "Koramangala", "HSR Layout", "Indiranagar")
+   - is_active (boolean)
+
+2. `poojas`
+   - id (primary key)
+   - name (string)
+   - slug (string, unique)
+   - description (text)
+   - duration_minutes (integer)
+   - base_price_priest_only_min (integer)
+   - base_price_priest_only_max (integer)
+   - base_price_with_kit_min (integer)
+   - base_price_with_kit_max (integer)
+   - is_active (boolean)
+
+3. `priests`
+   - id (primary key)
+   - full_name (string)
+   - phone (string)
+   - primary_zone_id (foreign key to zones.id)
+   - supported_languages (string or JSON text, e.g., ["kannada","hindi"])
+   - is_active (boolean)
+
+4. `priest_zones` (many-to-many for priests serving multiple zones)
+   - id (primary key)
+   - priest_id (fk to priests.id)
+   - zone_id (fk to zones.id)
+
+5. `availability_slots`
+   - id (primary key)
+   - priest_id (fk to priests.id)
+   - start_time (datetime)
+   - end_time (datetime)
+   - is_booked (boolean)
+
+6. `bookings`
+   - id (primary key, string or UUID)
+   - pooja_id (fk to poojas.id)
+   - zone_id (fk to zones.id)
+   - customer_name (string)
+   - customer_phone (string)
+   - customer_email (string, nullable)
+   - address_line1 (string)
+   - address_line2 (string, nullable)
+   - landmark (string, nullable)
+   - pincode (string)
+   - preferred_language (string: "kannada" | "hindi" | "telugu" | null)
+   - with_kit (boolean)
+   - booking_date (date)
+   - booking_start_time (time or datetime)
+   - booking_end_time (time or datetime)
+   - status (string enum: "pending_confirmation", "confirmed", "cancelled")
+   - created_at (datetime)
+   - updated_at (datetime)
+   - assigned_priest_id (fk to priests.id, nullable)
+
+7. `admins` (simple for now)
+   - id (primary key)
+   - email (string, unique)
+   - password_hash (string)
+   - is_superadmin (boolean)
+
+You can extend schema if needed, but keep it straightforward.
+
+==================================================
+BACKEND REQUIREMENTS
+==================================================
+
+Set up an Express app with TypeScript and define these core routes (under `/api`):
+
+Public endpoints:
+1. `GET /api/poojas`
+   - Returns list of active poojas with id, name, slug, description, duration, and price ranges.
+
+2. `GET /api/poojas/:slug`
+   - Returns detailed info about that pooja.
+
+3. `GET /api/zones`
+   - Returns the four launch zones.
+
+4. `POST /api/bookings`
+   - Request body:
+     - pooja_id
+     - zone_id
+     - customer_name
+     - customer_phone
+     - customer_email (optional)
+     - address_line1, address_line2, landmark, pincode
+     - preferred_language (optional: "kannada", "hindi", "telugu")
+     - with_kit (boolean)
+     - booking_date
+     - booking_start_time
+   - Logic (simple v1 hybrid logic):
+     - Try to find any active priest in that zone who:
+       - supports the preferred_language if provided (if not provided, ignore language filter)
+       - is free for that requested time window (based on availability_slots)
+     - If found:
+       - create booking with status = "confirmed" and assigned_priest_id set.
+     - If not found:
+       - create booking with status = "pending_confirmation" and assigned_priest_id = null.
+   - Response:
+     - booking object including status and a clear message:
+       - If confirmed: “Your booking is confirmed. We’ll share priest details soon.”
+       - If pending: “Your booking request is received. Our team will confirm availability shortly.”
+
+5. `GET /api/bookings/:id`
+   - Returns booking details including status.
+
+Admin endpoints (basic, can be left with minimal auth or TODO):
+6. `GET /api/admin/bookings` (list all or recent bookings)
+7. `PATCH /api/admin/bookings/:id`
+   - Allows updating status and assigned_priest_id.
+8. `POST /api/admin/priests`
+   - Add new priest with supported languages and zones.
+9. `GET /api/admin/priests`
+
+Backend specifics:
+- Use environment variables for Turso DB connection.
+- Implement a simple DB layer (Prefer Prisma with libSQL if possible).
+- Include basic validation for request bodies.
+- Enable CORS for the frontend origin.
+- Provide a simple seeding script or endpoint to seed:
+  - the four zones
+  - the five poojas with placeholder descriptions and prices
+  - a few sample priests and availability slots.
+
+Add a README with:
+- How to install dependencies
+- How to set environment variables for Turso
+- How to run migrations / seed script
+- How to run backend dev server
+
+==================================================
+FRONTEND REQUIREMENTS
+==================================================
+
+Use React + Vite + TypeScript in `/frontend`.
+
+Routing:
+- Use React Router and set up routes:
+  - `/` → Homepage
+  - `/pooja/:slug` → Pooja details page
+  - `/check-availability` → Booking form page
+  - `/booking/:id` → Booking status page
+
+Global layout:
+- Navbar:
+  - Brand name "PoojaOne"
+  - Links: Home, How it works, Contact (placeholder)
+- Footer:
+  - Basic links: About, Terms, Privacy
+
+1. Homepage
+   Sections (in order):
+
+   a) Hero section:
+   - Headline: “Get a verified pandit at your home when you need them”
+   - Subtext: “Convenient and trusted pooja services for busy Bengaluru professionals”
+   - CTA button: “Check Availability” (navigates to `/check-availability`)
+   - City indicator: “Serving Bangalore: Whitefield, Koramangala, HSR Layout, Indiranagar”
+
+   b) Featured Poojas section:
+   - Grid of 5 cards for the 5 poojas.
+   - For each:
+     - Name
+     - Short description (use respectful devotional but concise tone)
+     - Duration (from backend)
+     - Price range (e.g. “From ₹X – ₹Y” from backend)
+     - Button: “View details” → `/pooja/:slug`
+
+   c) How It Works section:
+   - Three steps with icons:
+     1. Select your pooja
+     2. Choose date, time and language
+     3. A verified pandit performs the ritual at your home
+   - Simple, clean layout.
+
+   d) Coverage Zones section:
+   - Show the four zones as cards / chips: Whitefield, Koramangala, HSR Layout, Indiranagar.
+   - Text: “We currently serve key Bengaluru neighborhoods and are expanding soon.”
+
+   e) Trust section:
+   - Short bullet points:
+     - Verified priests
+     - Transparent price ranges
+     - Hassle free experience
+   - Maybe a simple “Coming soon: Reviews and ratings” placeholder.
+
+2. Pooja Details Page (`/pooja/:slug`)
+   - Fetch pooja data from `/api/poojas/:slug`.
+   - Show:
+     - Name
+     - Description
+     - Duration
+     - What the priest provides (static textual section for now)
+     - What the customer should arrange (static text)
+     - Price ranges for:
+       - Priest only
+       - With kit
+     - Button: “Check Availability” → `/check-availability` with pooja preselected.
+
+3. Check Availability Page (`/check-availability`)
+   - Form that captures:
+
+     - Pooja: dropdown fetched from `/api/poojas`.
+     - Zone: dropdown fetched from `/api/zones`.
+     - Booking date (date picker).
+     - Booking time (time input or simple dropdown of time slots).
+     - Preferred language (dropdown: Kannada, Hindi, Telugu, plus “No preference” option).
+     - Service type: radio buttons:
+       - “Only priest”
+       - “Priest brings materials”
+     - Customer details:
+       - Name
+       - Phone
+       - Email (optional)
+       - Address line 1
+       - Address line 2 (optional)
+       - Landmark (optional)
+       - Pincode
+
+   - On submit:
+     - Call `POST /api/bookings`.
+     - On success:
+       - Navigate to `/booking/:id` using the returned booking id.
+
+4. Booking Status Page (`/booking/:id`)
+   - Fetch booking detail from `/api/bookings/:id`.
+   - Show:
+     - Pooja name
+     - Date & time
+     - Zone
+     - Service type (with or without kit)
+     - Preferred language
+     - Status:
+       - If `confirmed`: show a green style message: “Your booking is confirmed.”
+       - If `pending_confirmation`: show yellow style message: “Your booking is pending confirmation. We will update you soon.”
+       - If `cancelled`: red style message.
+   - Option: button to go back to homepage.
+
+Styling:
+- Use navy blue as main color for headings, navbar, and CTA buttons.
+- Use gold for accents: button hover, section dividers, icons.
+- Ensure full mobile responsiveness:
+  - Stacked sections on small screens.
+  - Cards become vertical on mobile.
+- Keep typography simple and readable.
+
+==================================================
+OTHER REQUIREMENTS
+==================================================
+
+- Configure CORS properly so frontend (Vite dev server) can call backend.
+- Include basic error states in UI:
+  - If API fails, show friendly message and not just crash.
+- Add `package.json` scripts for both frontend and backend:
+  - `frontend`: `dev`, `build`
+  - `backend`: `dev`, `start`
+- At the repo root, add a simple README explaining:
+  - How to run backend
+  - How to run frontend
+  - Turso DB setup basics and required env vars
+  - Any seeding steps
+
+Focus on:
+- Clean code structure
+- Clear separation of concerns
+- Ready-to-extend API design
+- Realistic but simple first version of the hybrid booking logic
+
+This should result in a working full stack MVP that I can open in Replit, configure Turso credentials, seed base data, and start using to test bookings end-to-end.
