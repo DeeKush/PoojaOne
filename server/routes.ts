@@ -71,6 +71,14 @@ export async function registerRoutes(
       const endTotalMinutes = startTotalMinutes + pooja.durationMinutes;
       const endHours = Math.floor(endTotalMinutes / 60);
       const endMinutes = endTotalMinutes % 60;
+      
+      // Validate time doesn't cross midnight
+      if (endHours >= 24) {
+        return res.status(400).json({ 
+          message: "Selected time and pooja duration would extend past midnight. Please choose an earlier time." 
+        });
+      }
+      
       const bookingEndTime = `${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
 
       // Hybrid booking logic: Try to auto-confirm
@@ -92,8 +100,8 @@ export async function registerRoutes(
             return null;
           }
 
-          // Check language preference if provided
-          if (bookingData.preferredLanguage) {
+          // Check language preference if provided (skip if "none" or null)
+          if (bookingData.preferredLanguage && bookingData.preferredLanguage !== "none") {
             const supportedLanguages = JSON.parse(priest.supportedLanguages);
             if (!supportedLanguages.includes(bookingData.preferredLanguage)) {
               return null;

@@ -14,22 +14,14 @@ import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { Pooja, Zone } from "@shared/schema";
+import { insertBookingSchema, type Pooja, type Zone } from "@shared/schema";
 
-const bookingFormSchema = z.object({
-  poojaId: z.string().min(1, "Please select a pooja"),
-  zoneId: z.string().min(1, "Please select a zone"),
-  customerName: z.string().min(2, "Name must be at least 2 characters"),
+// Extend shared schema with UI-specific validation
+const bookingFormSchema = insertBookingSchema.extend({
   customerPhone: z.string().regex(/^[6-9]\d{9}$/, "Please enter a valid 10-digit mobile number"),
   customerEmail: z.string().email("Please enter a valid email").optional().or(z.literal("")),
-  addressLine1: z.string().min(5, "Please enter your address"),
-  addressLine2: z.string().optional(),
-  landmark: z.string().optional(),
   pincode: z.string().regex(/^\d{6}$/, "Please enter a valid 6-digit pincode"),
-  preferredLanguage: z.string().optional(),
   withKit: z.enum(["false", "true"]),
-  bookingDate: z.string().min(1, "Please select a date"),
-  bookingStartTime: z.string().min(1, "Please select a time"),
 });
 
 type BookingFormValues = z.infer<typeof bookingFormSchema>;
@@ -246,7 +238,7 @@ export default function CheckAvailability() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="">No Preference</SelectItem>
+                              <SelectItem value="none">No Preference</SelectItem>
                               <SelectItem value="kannada">Kannada</SelectItem>
                               <SelectItem value="hindi">Hindi</SelectItem>
                               <SelectItem value="telugu">Telugu</SelectItem>
