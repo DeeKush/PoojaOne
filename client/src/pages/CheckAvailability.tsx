@@ -73,23 +73,21 @@ export default function CheckAvailability() {
 
   const createBookingMutation = useMutation({
     mutationFn: async (data: BookingFormValues) => {
-      // Backend will calculate end time based on pooja duration
+      // Backend will calculate end time based on pooja duration and compute status/priestId
       const payload = {
         poojaId: data.poojaId,
         zoneId: data.zoneId,
         customerName: data.customerName,
         customerPhone: data.customerPhone,
-        customerEmail: data.customerEmail || null,
+        customerEmail: data.customerEmail || undefined,
         addressLine1: data.addressLine1,
-        addressLine2: data.addressLine2 || null,
-        landmark: data.landmark || null,
+        addressLine2: data.addressLine2 || undefined,
+        landmark: data.landmark || undefined,
         pincode: data.pincode,
-        preferredLanguage: data.preferredLanguage || null,
+        preferredLanguage: data.preferredLanguage === "none" ? undefined : data.preferredLanguage || undefined,
         withKit: data.withKit === "true",
         bookingDate: data.bookingDate,
         bookingStartTime: data.bookingStartTime,
-        status: "pending_confirmation",
-        assignedPriestId: null,
       };
 
       return await apiRequest("POST", "/api/bookings", payload);
