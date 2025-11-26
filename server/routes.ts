@@ -160,6 +160,7 @@ export async function registerRoutes(
       });
 
       res.status(201).json({
+        success: true,
         booking,
         message,
       });

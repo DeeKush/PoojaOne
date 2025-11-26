@@ -90,14 +90,16 @@ export default function CheckAvailability() {
         bookingStartTime: data.bookingStartTime,
       };
 
-      return await apiRequest("POST", "/api/bookings", payload);
+      const response = await apiRequest("POST", "/api/bookings", payload);
+      return await response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: { success: boolean; booking: { id: string; status: string }; message: string }) => {
       toast({
         title: "Booking Submitted",
-        description: "Your booking request has been received.",
+        description: data.message || "Your booking request has been received.",
       });
-      navigate(`/booking/${data.booking.id}`);
+      const bookingId = data.booking.id;
+      navigate(`/booking/${bookingId}`);
     },
     onError: (error: any) => {
       toast({
